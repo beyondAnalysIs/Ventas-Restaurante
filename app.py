@@ -1,6 +1,8 @@
 import streamlit as st  
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
@@ -38,7 +40,7 @@ df = load_data()
 # Slider para filtros
 st.sidebar.markdown(
     """
-    <div style="width: 4rem; text-align: center; margin: 0 auto;">
+    <div style="width: 2.5rem; height:2.5rem; text-align: center; margin: 0 auto;">
         <h1 style="font-size: 28px; text-aling:center;">Filtros</h1>
     </div>
     """, 
@@ -68,6 +70,11 @@ selected_months = st.sidebar.multiselect(
 )
 
 # filtrar los datos
+# validación de los filtros
+if not selected_cities or not selected_products or not selected_months:
+    st.error("Por favor, selecciona al menos una ciudad, un producto y un mes.")
+    st.stop()  # Detener la ejecución si no hay filtros válidos
+    
 filtered_df = df[
     (df['City'].isin(selected_cities)) &
     (df['Product'].isin(selected_products)) &
@@ -84,151 +91,334 @@ most_popular_product = filtered_df['Product'].mode()[0]
 st.markdown(
     """
     <div style="width: 100%; text-align: center; margin: 0 auto;">
-        <h1 style="font-size: 48px; text-aling:center;">🍽☕🍻Dashboard de Ventas - Restaurante</h1>
+        <h1 style="font-size: 24px; text-aling:center;">🍽☕🍻Dashboard de Ventas - Restaurante</h1>
     </div>
     
-    <div style="width: 100%; text-align: center; margin: 0 auto;">
-        <h2 style="font-size: 32px; text-aling:center;">Análisis de Ventas basado en EDA aplicado</h2>
+    <div style="width: 100%; text-align: center; margin: 0 auto; color: #6b7280;">
+        <p style="font-size: 18px; text-aling:center;">
+            Una herramienta centralizada que reúne en un solo lugar indicadores clave como ventas totales, productos más vendidos,
+            comportamiento por ciudad y tipo de compra. Ideal para una visión rápida del negocio y la toma de decisiones estratégicas.
+        </p>
     """,
     unsafe_allow_html=True # Permitir HTML
 )
+
+# Estilos CSS para los KPIs
+st.markdown(
+    """
+    <style>
+    .kpi-container {
+        background: rgb(255, 75, 75);
+        border-radius: 20px;
+        padding: .1rem;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        margin: .2rem 0;
+    }
+    
+    .kpi-card {
+        background: transparent;
+        padding: 1.5rem;
+        border-radius: 20px !important;
+        text-align: center;
+        box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
+        margin: 0.5rem;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border: 2px solid;
+    }
+    
+    
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.15);
+    }
+    
+    .kpi-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ffffff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .kpi-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+        background: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: none;
+    }
+    
+    .kpi-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        color: #ffffff;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .kpi-card.sales { 
+        border-image: linear-gradient(135deg, #10b981, #34d399, #6ee7b7) 1;
+    }
+    .kpi-card.average { 
+        border-image: linear-gradient(135deg, #10b981, #34d399, #6ee7b7) 1;
+    }
+    .kpi-card.orders { 
+        border-image: linear-gradient(135deg, #10b981, #34d399, #6ee7b7) 1;
+    }
+    .kpi-card.product { 
+        border-image: linear-gradient(135deg, #10b981, #34d399, #6ee7b7) 1;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Contenedor principal de KPIs
+st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
 #KPIs en columnas
 col1,col2,col3,col4 = st.columns(4)
-col1.metric("Ventas Totales", f"${total_sales:,.2f}", delta=f"${total_sales - filtered_df['Total_Sales'].sum():,.2f}" if filtered_df['Total_Sales'].sum() else "$0.00")
-col2.metric("Promedio de Ventas por Orden", f"${avg_sale_per_order:,.2f}", delta=f"${avg_sale_per_order - filtered_df['Total_Sales'].mean():,.2f}" if filtered_df['Total_Sales'].mean() else "$0.00")
-col3.metric("Total de Pedidos", total_orders, delta=total_orders - filtered_df['Order ID'].nunique() if filtered_df['Order ID'].nunique() else 0)
-col4.metric("Producto Más Popular", most_popular_product)  
+
+with col1:
+    st.markdown(
+        f"""
+            <div class="kpi-card sales">
+                <div class="kpi-icon">💰</div>
+                <div class="kpi-title">Ventas Totales</div>
+                <div class="kpi-value">${total_sales:,.2f}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col2:
+    st.markdown(
+        f"""
+        <div class="kpi-card average">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-title">Promedio por Orden</div>
+            <div class="kpi-value">${avg_sale_per_order:,.2f}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col3:
+    st.markdown(
+        f"""
+        <div class="kpi-card orders">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-title">Total de Pedidos</div>
+            <div class="kpi-value">{total_orders:,}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col4:
+    st.markdown(
+        
+        f"""
+        <div class="kpi-card product">
+            <div class="kpi-icon">⭐</div>
+            <div class="kpi-title">Producto Más Popular</div>
+            <div class="kpi-value" style="font-size: 18px;">{most_popular_product}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Cerrar contenedor principal
+st.markdown('</div>', unsafe_allow_html=True)  
+st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
 # Gráficos 
+
 st.markdown(
     """
     <div style="width: 100%; text-align: center; margin: 0 auto;">
-        <h2 style="font-size: 32px; text-aling:center;">Análisis de Ventas</h2>
+        <h2 style="font-size: 20px; text-aling:center;">📊Análisis de Ventas</h2>
     </div>
     """,
     unsafe_allow_html=True # Permitir HTML
 )
 
-tab1, tab2, tab3 = st.tabs(['Tendencias', 'Distribución', 'Comparativa de Ventas'], width=400)
- 
+tab1, tab2, tab3 = st.tabs(['Tendencias', 'Distribución', 'Comparativa de Ventas'])
+# -----TENDENCIAS----- 
 with tab1:
-    # ventas por mes
-    montly_sales = filtered_df.groupby(['Year', 'Month'])['Total_Sales'].sum().reset_index()
-    fig = px.line(
-        montly_sales, 
-        x='Month', 
-        y='Total_Sales', 
-        color='Year', 
-        title='Ventas por Mes'
-    )
-    fig.update_layout(
-        xaxis_title='Mes',
-        yaxis_title='Ventas Totales',
-        legend_title='Año',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Layout horizontal para tendencias - 2 columnas lado a lado
+    col1, col2 = st.columns(2)
     
-    # ventas por día de la semana
-    daily_sales = filtered_df.groupby('Day_ofWeek')['Total_Sales'].sum().reset_index()
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    daily_sales['Day_ofweek'] = pd.Categorical(daily_sales['Day_ofWeek'], categories=day_order, ordered=True)
+    with col1:
+        # heatmap de Purchase Type por City
+        contingency_table = pd.crosstab(filtered_df['Purchase Type'],filtered_df['City'], normalize='index')
+        scale = 1.0
+        # grafica
+        fig, ax = plt.subplots(figsize=(10 * scale, 6 * scale), facecolor='none')
+        sns.set_theme(
+            style="whitegrid",
+            palette="coolwarm",
+            font_scale=1.1 
+        )
+        
+        sns.heatmap(
+            contingency_table, 
+            annot=True, 
+            fmt=".2f", 
+            cmap='Blues', 
+            linewidths=.5, 
+            ax=ax,
+            annot_kws={"fontsize": scale * 15},  # Ajustar el tamaño de la fuente de los números
+            
+        )
+        ax.set_title('Distribución de Tipo de Compra por Ciudad', fontsize=20,color='white', pad=30, fontweight='bold', loc='left')
+        ax.set_xlabel('Ciudad', fontsize=16, color='white')
+        ax.set_ylabel('Tipo de Compra', fontsize=16, color='white')
+        ax.tick_params(axis='both', which='major', labelsize=14, colors='white')
+        st.pyplot(fig, use_container_width=True)  # Mostrar la gráfica en Streamlit
+        
     
-    fig = px.bar(
-        daily_sales, 
-        x='Day_ofWeek', 
-        y='Total_Sales', 
-        title='Ventas por Día de la Semana',
-        category_orders={'Day_ofWeek': day_order}
-    )
-    fig.update_layout(
-        xaxis_title='Día de la Semana',
-        yaxis_title='Ventas Totales',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
+    with col2:
+        # ventas por día de la semana
+        daily_sales = filtered_df.groupby('Day_ofWeek')['Total_Sales'].sum().reset_index()
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        daily_sales['Day_ofweek'] = pd.Categorical(daily_sales['Day_ofWeek'], categories=day_order, ordered=True)
+        
+        fig = px.bar(
+            daily_sales, 
+            x='Day_ofWeek', 
+            y='Total_Sales', 
+            title='Ventas por Día de la Semana',
+            category_orders={'Day_ofWeek': day_order},
+            color='Day_ofWeek'
+        )
+        fig.update_layout(
+            xaxis_title='Día de la Semana',
+            yaxis_title='Ventas Totales',
+            template='plotly_white',
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+# -----DISTRIBUCIÓN-----
 with tab2:
-    # Distribución de productos vendidos
-    product_dist = filtered_df['Product'].value_counts().reset_index(name='count')
-    fig = px.pie(
-        product_dist,
-        values='count',
-        names='Product',
-        title='Distribución de Productos Vendidos'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Primera fila - 2 gráficos horizontales
+    col1, col2, col3 = st.columns(3)
     
-    # Métodos de pago
-    payment_dist = filtered_df['Payment Method'].value_counts().reset_index(name='count')
-    fig = px.bar(
-        payment_dist,
-        x='Payment Method',
-        y='count',
-        title='Distribución de Métodos de Pago',
-        color='Payment Method'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    with col1:
+        # Distribución de productos vendidos
+        product_dist = filtered_df['Product'].value_counts().reset_index(name='count')
+        fig = px.pie(
+            product_dist,
+            values='count',
+            names='Product',
+            title='Productos Vendidos'
+        )
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
     
-    # Distribución de ventas por ciudad
-    city_sales = filtered_df.groupby('City')['Total_Sales'].sum().reset_index()
-    fig = px.bar(
-        city_sales,
-        x='City',
-        y='Total_Sales',
-        title='Distribución de Ventas por Ciudad',
-        color='City',
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        # Métodos de pago
+        payment_dist = filtered_df['Payment Method'].value_counts().reset_index(name='count')
+        fig = px.bar(
+            payment_dist,
+            x='Payment Method',
+            y='count',
+            title='Métodos de Pago',
+            color='Payment Method'
+        )
+        fig.update_layout(
+            height=400,
+            xaxis_title='Método de Pago',
+            yaxis_title='Cantidad'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+    with col3:
+        # Distribución de ventas por ciudad (centrada)
+        city_sales = filtered_df.groupby('City')['Total_Sales'].sum().reset_index()
+        fig = px.bar(
+            city_sales,
+            x='City',
+            y='Total_Sales',
+            title='Ventas por Ciudad',
+            color='City',
+        )
+        fig.update_layout(
+            xaxis_title='Ciudad',
+            yaxis_title='Ventas Totales',
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
     
+# -----COMPARATIVA DE VENTAS-----
 with tab3:
-    # Distribución por tipo de compra
-    purchase_sales = filtered_df.groupby('Purchase Type')['Total_Sales'].sum().reset_index()
-    fig = px.bar(
-        purchase_sales,
-        x='Purchase Type',
-        y='Total_Sales',
-        title='Distribución de Ventas por Tipo de Compra',
-        color='Purchase Type'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Layout horizontal para comparativas - 2 columnas lado a lado
+    col1, col2 = st.columns(2)
     
-    # Comparación fin de semana vs semana
-    weekend_type = filtered_df.groupby('Weekend')['Total_Sales'].sum().reset_index()    
-    weekend_type['Weekend']= weekend_type['Weekend'].map({True: 'Fin de Semana', False: 'Día de Semana'})
-    fig = px.bar(
-        weekend_type,
-        x='Weekend',
-        y='Total_Sales',
-        title='Comparación de Ventas entre Fin de Semana y Día de Semana',
-        color='Weekend'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    with col1:
+        # Distribución por tipo de compra
+        purchase_sales = filtered_df.groupby('Purchase Type')['Total_Sales'].sum().reset_index()
+        fig = px.bar(
+            purchase_sales,
+            x='Purchase Type',
+            y='Total_Sales',
+            title='Ventas por Tipo de Compra',
+            color='Purchase Type'
+        )
+        fig.update_layout(
+            height=400,
+            xaxis_title='Tipo de Compra',
+            yaxis_title='Ventas Totales'    
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        # Comparación fin de semana vs semana
+        weekend_type = filtered_df.groupby('Weekend')['Total_Sales'].sum().reset_index()    
+        weekend_type['Weekend']= weekend_type['Weekend'].map({True: 'Fin de Semana', False: 'Día de Semana'})
+        fig = px.bar(
+            weekend_type,
+            x='Weekend',
+            y='Total_Sales',
+            title='Ventas entre Fin de Semana y Día de Semana',
+            color='Weekend'
+        )
+        fig.update_layout(
+            height=400,
+            xaxis_title='Tipo de Día',
+            yaxis_title='Ventas Totales',
+        )
+        st.plotly_chart(fig, use_container_width=True)
+st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
-# Hallazgos y Conclusiones
-st.subheader('👀🔎Hallazgos claves para el Análisis')
-st.markdown(
-    """
-    - **Tendencias de Ventas**: Se observa una tendencia clara de ventas a lo largo de los meses, con picos en los meses de enero y febrero, y bajos en los meses de marzo, abril y mayo.
-    - **Distribución de Ventas**: La mayoría de las ventas se concentran en productos como café, té y bebidas calientes, seguidos por platos fuertes y postres.
-    - **Métodos de Pago**: La mayoría de las ventas se realizan con tarjetas de crédito, seguidas por tarjetas de débito y efectivo.
-    - **Comparación de Ventas**: La mayoría de las ventas se realizan en días de semana, con una pequeña influencia de fin de semana.
-    - **Distribución por Tipo de Compra**: La mayoría de las ventas se realizan en línea, seguidas por en tienda.
-    - **Distribución por Ciudad**: La mayoría de las ventas se realizan en la ciudad de Nueva York, seguidas por la ciudad de San Francisco.
-    """
-)
 # Análisis Detallado
-st.subheader('📊 Análisis Detallado de Ventas')
 col1, col2 = st.columns(2)
 with col1:
-    #top managers por ventas
+    #top Managers por ventas
     manager_sales = filtered_df.groupby('Manager_clean')['Total_Sales'].sum().reset_index().sort_values(by='Total_Sales', ascending=False)
     fig = px.bar(
         manager_sales,
         x='Total_Sales',
         y='Manager_clean',
-        title='Top 10 Managers por Ventas',
+        title='Top Managers por Ventas',
+    )
+    fig.update_layout(
+        xaxis_title='Ventas Totales',
+        yaxis_title='Gerente',
+        height=400,
+        template='plotly_white'
     )
     st.plotly_chart(fig, use_container_width=True) 
     
@@ -242,14 +432,22 @@ with col2:
         title='Relación entre Precio y Cantidad Vendida por Producto',
         trendline='ols' # Agregar línea de tendencia
     )
+    fig.update_traces(marker=dict(size=10, opacity=0.7), selector=dict(mode='markers'))
+    fig.update_layout(
+        xaxis_title='Precio',
+        yaxis_title='Cantidad Vendida',
+        template='plotly_white',
+        height=400
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
+st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
 # Footer
-st.markdown('---')
 st.markdown(
     """
     <div style="text-align: center; padding: 20px;">
         <p>Desarrollado por <strong>Anderson Hernández</strong> | <a href="https://github.com/beyondAnalysIs/Ventas-Restaurante" target="_blank">GitHub</a></p>
         <p>© 2025</p>
     </div>
-    """,unsafe_allow_html=True) # Permitir HTML
+    """,unsafe_allow_html=True) 
