@@ -24,7 +24,7 @@ def load_data():
     df= pd.read_csv('sales_data.csv') # Cargar el archivo CSV y convertir la columna 'Date' a tipo datetime
     df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce') # Convertir la columna 'Date' a tipo datetime
     df['Price'] = df['Price'].astype(float) # Convertir la columna 'Price' a tipo float
-    df['Quiantity'] = df['Quantity'].astype(int) # Convertir la columna 'Quantity' a tipo int
+    df['Quantity'] = df['Quantity'].astype(int) # Convertir la columna 'Quantity' a tipo int
     df['Total_Sales'] = df['Price'] * df['Quantity'] # Calcular el total de ventas
     df['Month'] = df['Date'].dt.month # Extraer el mes de la fecha
     df['Year'] = df['Date'].dt.year # Extraer el año de la fecha
@@ -37,6 +37,7 @@ def load_data():
 
 df = load_data()
 
+#-------FILTROS-------
 # Slider para filtros
 st.sidebar.markdown(
     """
@@ -87,11 +88,11 @@ avg_sale_per_order = filtered_df['Total_Sales'].mean()
 total_orders= filtered_df['Order ID'].nunique()
 most_popular_product = filtered_df['Product'].mode()[0]
  
-# Layout Principal
+#--------LAYOUT PRINCIPAL--------
 st.markdown(
     """
     <div style="width: 100%; text-align: center; margin: 0 auto;">
-        <h1 style="font-size: 24px; text-aling:center;">🍽☕🍻Dashboard de Ventas - Restaurante</h1>
+        <h1 style="font-size: 24px; text-aling:center;">🍔🍗🍦Dashboard de Ventas - Restaurante 🍽 ☕ 🍻</h1>
     </div>
     
     <div style="width: 100%; text-align: center; margin: 0 auto; color: #6b7280;">
@@ -102,7 +103,7 @@ st.markdown(
     """,
     unsafe_allow_html=True # Permitir HTML
 )
-
+#--------KPIS--------
 # Estilos CSS para los KPIs
 st.markdown(
     """
@@ -244,8 +245,7 @@ with col4:
 st.markdown('</div>', unsafe_allow_html=True)  
 st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
-# Gráficos 
-
+#----------GRÁFICOS----------
 st.markdown(
     """
     <div style="width: 100%; text-align: center; margin: 0 auto;">
@@ -255,7 +255,17 @@ st.markdown(
     unsafe_allow_html=True # Permitir HTML
 )
 
-tab1, tab2, tab3 = st.tabs(['Tendencias', 'Distribución', 'Comparativa de Ventas'])
+# dataframe de coordenadas para las ciudades
+city_coords = {
+    'Madrid': {'lat': 40.416775, 'lon': -3.703790},
+    'Lisbon': {'lat': 38.722252, 'lon': -9.139337},
+    'London': {'lat': 51.507351, 'lon': -0.127758},
+    'Berlin': {'lat': 52.520008, 'lon': 13.404954},
+    'Paris': {'lat': 48.856613, 'lon': 2.352222},
+}
+# Contenedores de gráficas
+tab1, tab2, tab3, tab4 = st.tabs(['Tendencias', 'Distribución', 'Comparativa de Ventas', 'Mapa de Ventas'])
+
 # -----TENDENCIAS----- 
 with tab1:
     # Layout horizontal para tendencias - 2 columnas lado a lado
@@ -403,7 +413,89 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True)
 st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
-# Análisis Detallado
+# -----MAPA DE VENTAS-----
+with tab4:
+    st.markdown(
+        """
+        <div style="width: 100%; text-align: center; margin: 0 auto;">
+            <h2 style="font-size: 20px; text-aling:center;">🗺️ Ventas por Ciudad</h2>
+        </div>
+        """,
+        unsafe_allow_html=True # Permitir HTML
+    )
+    # Mapa de ventas
+    city_sales = filtered_df.groupby('City')['Total_Sales'].sum().reset_index().round(2)
+    
+    # Agregar coordenadas de las ciudades
+    city_sales['lat'] = city_sales['City'].map(lambda x: city_coords.get(x,{}).get('lat'))
+    city_sales['lon'] = city_sales['City'].map(lambda x: city_coords.get(x,{}).get('lon'))
+    
+    # Crear el mapa
+    fig = px.scatter_geo(
+        city_sales,
+        lat='lat',
+        lon='lon',
+        size='Total_Sales',
+        hover_name='City',
+        projection='natural earth',
+        size_max=50,
+        color='City',
+        locationmode='country names',
+        text='Total_Sales'
+    )
+    
+    # Texto del mapa
+    fig.update_traces(
+        textfont=dict(
+            color='#000',
+            size=12,
+            family='Arial,bold'
+        ),
+        textposition='middle center'
+    )
+    # Personalizar el mapa
+    fig.update_geos(
+        resolution=50, # Resolución del mapa
+        showcoastlines=True, # Mostrar costas
+        coastlinecolor="RebeccaPurple", # Color de las costas
+        showland=True, # Mostrar tierra
+        landcolor="LightGreen", # Color de la tierra
+        showocean=True,# Mostrar océanos
+        oceancolor="LightBlue", # Color de los océanos
+        showlakes=True,# Mostrar lagos
+        lakecolor="LightBlue", # Color de los lagos
+        showrivers=True, # Mostrar ríos
+        rivercolor="LightBlue", # Color de los ríos
+    )
+    fig.update_layout(
+        height=350,
+        margin={"r": 0, "t": 40, "l": 0, "b": 0} ,
+        geo=dict(
+            center=dict(lat=48, lon=5), 
+            showframe=False,# No mostrar el marco del mapa
+            showcoastlines=False,# No mostrar las costas
+            projection_type='natural earth',# Tipo de proyección del mapa
+            bgcolor='rgba(0,0,0,0)',
+            projection_scale=4, # Escala de la proyección
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Montrar tabla de datos
+    with st.expander('Ver Datos detallados por ciudad'):
+        city_sales_display = city_sales[['City', 'Total_Sales']].copy()
+        city_sales_display['Total_Sales'] = city_sales_display['Total_Sales'].apply(
+            lambda x: f'€{x:,.2f}'  
+        )
+        st.dataframe(
+            city_sales_display,
+            column_config={
+                'City': 'Ciudad',
+                'Total_Sales':'Ventas Totales'
+            },
+            hide_index=True
+        )
+#-------- ANÁLISIS MULTIVARIABLES------    
 col1, col2 = st.columns(2)
 with col1:
     #top Managers por ventas
@@ -443,7 +535,7 @@ with col2:
     st.plotly_chart(fig, use_container_width=True)
 st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
-# Footer
+#--------FOOTER-------
 st.markdown(
     """
     <div style="text-align: center; padding: 20px;">
