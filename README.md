@@ -1,11 +1,9 @@
-Descripción breve:
+Descripción breve
 Dashboard interactivo construido con Streamlit para análisis visual y exploración de datos de ventas de restaurante. Permite obtener insights clave como ventas totales, productos más vendidos, comparativas por ciudad, tendencias temporales, mapa de ventas y análisis por gerentes.
 
 Tabla de Contenidos
 - Demo
--  Características
-- Instalación
-- Estructura del Proyecto
+- Características
 - Uso
 - Autor
 
