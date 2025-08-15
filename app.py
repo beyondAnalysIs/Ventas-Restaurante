@@ -210,7 +210,6 @@ with col2:
         <div class="kpi-card average">
             <div class="kpi-icon">📊</div>
             <div class="kpi-title">Promedio por Orden</div>
-            <div class="kpi-value">€{avg_sale_per_order:,.2f}</div>
         </div>
         """,
         unsafe_allow_html=True
